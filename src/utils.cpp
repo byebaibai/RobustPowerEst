@@ -59,6 +59,7 @@ void utils::_dstein(int *N, double *D, double *E, int *M, double *W, int *IBLOCK
         }
     }
 }
+
 bool utils::_len_guards(const int16_t &M) {
     if ( M < 0 ){
         throw "Window length M must be a non-negative integer";
@@ -76,31 +77,32 @@ int16_t utils::_extend(const int16_t &M, const bool & sym, bool & needs_trunc) {
     }
 }
 
-Eigen::MatrixXcd utils::_fftautocorr(const Eigen::MatrixXcd & x){
+arma::cx_dmat utils::_fftautocorr(const arma::cx_dmat & x){
     // TODO: implement
 }
 
-void utils::_eigh_tridiagonal(const Eigen::VectorXd &d, const Eigen::VectorXd &e, Eigen::VectorXd &w,
-                              Eigen::MatrixXd &v, const std::pair<uint16_t, uint16_t> & select_range) {
+
+void utils::_eigh_tridiagonal(const arma::dvec &d, const arma::dvec &e, arma::dvec &w, arma::dmat &v,
+                              const std::pair<uint16_t, uint16_t> &select_range) {
     int N = d.size();
     double vl = 0.0, vu = 1.0, tol = 0.0;
     int il = select_range.first + 1, iu = select_range.second + 1, M;
     std::shared_ptr<double> W(new double[N], std::default_delete<double[]>());
     std::shared_ptr<int> IBLOCK(new int[N], std::default_delete<int[]>());
     std::shared_ptr<int> ISPLIT(new int[N], std::default_delete<int[]>());
-    double *D = const_cast<double *>(d.data()), *E = const_cast<double *>(e.data());
+    double *D = const_cast<double *>(d.memptr()), *E = const_cast<double *>(e.memptr());
 
     _dstebz(&N, &vl, &vu, &il, &iu, &tol, D, E, &M, W.get(), IBLOCK.get(), ISPLIT.get());
 
     std::shared_ptr<double> Z(new double[N * M], std::default_delete<double[]>());
     _dstein(&N, D, E, &M, W.get(), IBLOCK.get(), ISPLIT.get(), Z.get(), &N);
 
-    w = Eigen::Map<Eigen::VectorXd>(W.get(), M);
-    v = Eigen::Map<Eigen::MatrixXd>(Z.get(), N, M);
-    v.transposeInPlace();
+    w = arma::dvec(W.get(), M);
+    v = arma::dmat(Z.get(), N, M);
+    inplace_trans(v);
 }
 
-void utils::getEigentoData(Eigen::MatrixXd& src, char* pathAndName){
+void utils::getEigentoData(arma::dmat & src, char* pathAndName){
     std::ofstream fichier(pathAndName, std::ios::out | std::ios::trunc);
     if(fichier)  // si l'ouverture a réussi
     {
@@ -114,9 +116,9 @@ void utils::getEigentoData(Eigen::MatrixXd& src, char* pathAndName){
     }
 }
 
-Eigen::MatrixXd utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::string norm, bool return_ratios) {
+arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::string norm, bool return_ratios) {
     if ( _len_guards(M) ){
-        return Eigen::MatrixXd::Constant(M, 1, 1.0);
+        return arma::mat(M, 1, arma::fill::ones);
     }
     if ( norm == "" ){
         if ( Kmax < 0 ){
@@ -149,33 +151,30 @@ Eigen::MatrixXd utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::
     bool needs_trunc;
     M = _extend(M, sym, needs_trunc);
     double W = double(NW)/double(M);
-    Eigen::VectorXd nidx = Eigen::VectorXd::LinSpaced(M, 0, M - 1);
-    Eigen::VectorXd d = Eigen::square((M - 1.0 - 2.0 * nidx.array()) / 2.0 ) * std::cos( 2.0 * M_PI * W );
-    Eigen::VectorXd e = nidx(Eigen::seq(1, Eigen::last)).array() *
-            (M - nidx(Eigen::seq(1, Eigen::last)).array()) / 2.0;
 
-    Eigen::VectorXd w;
-    Eigen::MatrixXd windows;
+    arma::dvec nidx = arma::linspace(0, M - 1, M);
+    arma::dvec d = arma::square((M - 1.0 - 2.0 * nidx) / 2.0 ) * std::cos( 2.0 * M_PI * W);
+    arma::dvec e = nidx.subvec(1, nidx.index_max()) % (M - nidx.subvec(1, nidx.index_max())) / 2.0;
+
+    arma::dvec w;
+    arma::dmat windows;
     _eigh_tridiagonal(d, e, w, windows, std::make_pair<uint16_t, uint16_t>(M - Kmax, M - 1));
-    w.reverseInPlace();
-    windows.colwise().reverseInPlace();
+    w = arma::reverse(w);
+    windows = arma::reverse(windows, 0);
 
-    Eigen::MatrixXd evenRows = Eigen::MatrixXd::Map(windows.data(),
-                                                    int(ceil(double(windows.rows())/2.0)), windows.cols(),
-                                                    Eigen::Stride<Eigen::Dynamic, 2>(windows.rows(), 2));
-    for (uint16_t i = 0; i < evenRows.rows(); ++i ){
-        if ( evenRows.row(i).sum() < 0 ){
-            windows.row(i * 2) = windows.row(i * 2) * -1;
+
+    arma::dmat evenRows = windows.rows(arma::regspace<arma::uvec>(0, 2, windows.n_rows - 1));
+    for (uint16_t i = 0; i < evenRows.n_rows; ++i ){
+        if ( arma::sum(evenRows.row(i)) < 0 ){
+            windows.row(i * 2) *= -1;
         }
     }
 
     double thresh = std::max(1e-7, 1.0 / double(M));
-    Eigen::MatrixXd oddRows = Eigen::MatrixXd::Map(windows.data() + 1,
-                                                   int(floor(double(windows.rows())/2.0)), windows.cols(),
-                                                   Eigen::Stride<Eigen::Dynamic, 2>(windows.rows(), 2));
-    for (uint16_t i = 0; i < oddRows.rows(); ++i ){
-        Eigen::VectorX<bool> mask = Eigen::square(oddRows.row(i).array()) > thresh;
-        if ( oddRows.row(i)(mask)[0] < 0 ){
+    arma::dmat oddRows = windows.rows(arma::regspace<arma::uvec>(1, 2, windows.n_rows - 1));
+    for (uint16_t i = 0; i < oddRows.n_rows; ++i ){
+        arma::uvec mask = arma::find( arma::square(oddRows.row(i)) > thresh );
+        if ( oddRows.row(i)(mask(0)) < 0 ){
             windows.row(i * 2 + 1) = windows.row(i * 2 + 1) * -1;
         }
     }
@@ -186,14 +185,14 @@ Eigen::MatrixXd utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::
     }
 
     if ( norm != "2" ){
-        windows = windows / windows.maxCoeff();
+        windows = windows / arma::max(windows);
         if ( M % 2 == 0 ){
             double correction;
             if ( norm == "approximate" ){
                 correction = pow(M, 2) / double( pow(M, 2) + double(NW));
             }else{
-
-                kfr::univector<kfr::complex<double>> data2fft = kfr::make_univector(windows.row(0).array());
+                arma::dvec rows = windows.row(0).as_col();
+                kfr::univector<kfr::complex<double>> data2fft = kfr::make_univector(rows.memptr(), windows.n_cols);
                 kfr::univector<kfr::complex<double>> s = kfr::irealdft( data2fft );
                 kfr::univector<kfr::complex<double>> shift = -(1 - 1.0/double(M)) * kfr::linspace(1, M/2 + 1, M/2);
                 s.slice(1) = s.slice(1) * 2 * kfr::exp(kfr::make_complex(0, 1) * M_PI * shift);
@@ -204,7 +203,7 @@ Eigen::MatrixXd utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::
     }
 
     if ( needs_trunc ){
-        windows = windows.leftCols(windows.cols() - 1);
+        windows = windows.cols(0, windows.n_cols - 1);
     }
     if ( singleton ){
         windows = windows.row(0);
@@ -213,8 +212,8 @@ Eigen::MatrixXd utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::
     return windows;
 }
 
-Eigen::MatrixXd utils::dpsschk(const int & N, const YAML::Node & mts_args){
-    Eigen::MatrixXd tapers = dpss(N, mts_args["tapers"]["nw"].as<int16_t>(), mts_args["tapers"]["kmax"].as<int16_t>());
+arma::dmat utils::dpsschk(const int & N, const YAML::Node & mts_args){
+    arma::dmat tapers = dpss(N, mts_args["tapers"]["nw"].as<int16_t>(), mts_args["tapers"]["kmax"].as<int16_t>());
     tapers = tapers * sqrt(mts_args["Fs"].as<double>());
-    return tapers.transpose();
+    return tapers.t();
 }

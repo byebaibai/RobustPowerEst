@@ -8,11 +8,6 @@ endif()
 
 SET (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
 
-# Find Eigen3
-SET( EIGEN3_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/3rdparty/eigen3/include" )
-INCLUDE_DIRECTORIES ( "${EIGEN3_INCLUDE_DIR}" )
-# Find Eigen3 Done
-
 # Find GTest
 SET(GTEST_ROOT "${CMAKE_SOURCE_DIR}/3rdparty/gtest")
 find_package(GTest REQUIRED)
@@ -40,6 +35,10 @@ SET(KFR_INCLUDE_DIRS "${KFR_ROOT}/include")
 add_subdirectory(3rdparty/kfr kfr-bin)
 # Find kfr Done
 
+# Find Armadillo
+find_package(Armadillo REQUIRED)
+# Find Armadillo Done
+
 # Find Lapack
 find_package(LAPACK REQUIRED)
 # Find Lapack Done
@@ -50,7 +49,8 @@ INCLUDE_DIRECTORIES(
         ${YAML_CPP_INCLUDE_DIRS}
         ${FMT_INCLUDE_DIRS}
         ${KFR_INCLUDE_DIRS}
+        ${ARMADILLO_INCLUDE_DIRS}
 )
-add_executable(generic_pse main.cpp src/dpss.cpp include/dpss.h src/utils.cpp include/utils.h)
+add_executable(generic_pse main.cpp src/utils.cpp include/utils.h)
 
-target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES} ${FMT_LIBRARIES} kfr kfr_io kfr_dft ${LAPACK_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES} ${FMT_LIBRARIES} kfr kfr_io kfr_dft ${LAPACK_LIBRARIES} ${ARMADILLO_LIBRARIES})
