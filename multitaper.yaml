@@ -1,0 +1,9 @@
+---
+trialave: 1
+tapers:
+  nw: 3
+  kmax: 5
+err:
+  - 2
+  - 0.05
+Fs: 250

@@ -1,0 +1,11 @@
+prefix=/mnt/c/Users/heyanbai/CLionProjects/generic-pse/3rdparty/fmt
+exec_prefix=/mnt/c/Users/heyanbai/CLionProjects/generic-pse/3rdparty/fmt
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: fmt
+Description: A modern formatting library
+Version: 8.0.0
+Libs: -L${libdir} -lfmt
+Cflags: -I${includedir}
+
