@@ -2,8 +2,18 @@
 // Created by heyanbai on 2021/9/19.
 //
 
-
 #include "utils.h"
+
+#include <iostream>
+#include <memory>
+#include <cmath>
+#include <vector>
+
+#include "kfr/dft.hpp"
+#include "fmt/core.h"
+#include "fmt/ranges.h"
+
+
 extern "C" {
     void dstebz_(char *RANGE, char *ORDER, int *N, double *VL, double *VU,
                  int *IL, int *IU, double *ABSTOL, double *D, double *E, int *M,
@@ -13,7 +23,7 @@ extern "C" {
                  int *LDZ, double *WORK, int *IWORK, int *IFAIL, int *INFO);
 }
 
-void utils::_dstebz(int *N, double *VL, double *VU,
+void utils::helper::dstebz(int *N, double *VL, double *VU,
                      int *IL, int *IU, double *ABSTOL, double *D, double *E,
                      int *M, double *W, int *IBLOCK, int *ISPLIT){
 
@@ -45,7 +55,7 @@ void utils::_dstebz(int *N, double *VL, double *VU,
         }
     }
 }
-void utils::_dstein(int *N, double *D, double *E, int *M, double *W, int *IBLOCK, int *ISPLIT, double *Z, int *LDZ){
+void utils::helper::dstein(int *N, double *D, double *E, int *M, double *W, int *IBLOCK, int *ISPLIT, double *Z, int *LDZ){
     int INFO;
     std::shared_ptr<double> WORK(new double[5*(*N)], std::default_delete<double[]>());
     std::shared_ptr<int> IWORK(new int[*N], std::default_delete<int[]>());
@@ -60,14 +70,14 @@ void utils::_dstein(int *N, double *D, double *E, int *M, double *W, int *IBLOCK
     }
 }
 
-bool utils::_len_guards(const int16_t &M) {
+bool utils::helper::len_guards(const int16_t &M) {
     if ( M < 0 ){
-        throw "Window length M must be a non-negative integer";
+        throw std::runtime_error("Window length M must be a non-negative integer");
     }
     return M <= 1;
 }
 
-int16_t utils::_extend(const int16_t &M, const bool & sym, bool & needs_trunc) {
+int16_t utils::helper::extend(const int16_t & M, const bool & sym, bool & needs_trunc) {
     if ( !sym ){
         needs_trunc = true;
         return M + 1;
@@ -77,32 +87,28 @@ int16_t utils::_extend(const int16_t &M, const bool & sym, bool & needs_trunc) {
     }
 }
 
-arma::cx_dmat utils::_fftautocorr(const arma::cx_dmat & x){
-    // TODO: implement
-}
-
-
-void utils::_eigh_tridiagonal(const arma::dvec &d, const arma::dvec &e, arma::dvec &w, arma::dmat &v,
+void utils::helper::eigh_tridiagonal(const arma::dvec &d, const arma::dvec &e, arma::dvec &w, arma::dmat &v,
                               const std::pair<uint16_t, uint16_t> &select_range) {
-    int N = d.size();
+    int N = int(d.size());
     double vl = 0.0, vu = 1.0, tol = 0.0;
     int il = select_range.first + 1, iu = select_range.second + 1, M;
     std::shared_ptr<double> W(new double[N], std::default_delete<double[]>());
     std::shared_ptr<int> IBLOCK(new int[N], std::default_delete<int[]>());
     std::shared_ptr<int> ISPLIT(new int[N], std::default_delete<int[]>());
-    double *D = const_cast<double *>(d.memptr()), *E = const_cast<double *>(e.memptr());
+    auto D = const_cast<double *>(d.memptr());
+    auto E = const_cast<double *>(e.memptr());
 
-    _dstebz(&N, &vl, &vu, &il, &iu, &tol, D, E, &M, W.get(), IBLOCK.get(), ISPLIT.get());
+    dstebz(&N, &vl, &vu, &il, &iu, &tol, D, E, &M, W.get(), IBLOCK.get(), ISPLIT.get());
 
     std::shared_ptr<double> Z(new double[N * M], std::default_delete<double[]>());
-    _dstein(&N, D, E, &M, W.get(), IBLOCK.get(), ISPLIT.get(), Z.get(), &N);
+    dstein(&N, D, E, &M, W.get(), IBLOCK.get(), ISPLIT.get(), Z.get(), &N);
 
     w = arma::dvec(W.get(), M);
     v = arma::dmat(Z.get(), N, M);
     inplace_trans(v);
 }
 
-void utils::getEigentoData(arma::dmat & src, char* pathAndName){
+void utils::getArmaMat2Txt(const arma::dmat & src, const std::string & pathAndName){
     std::ofstream fichier(pathAndName, std::ios::out | std::ios::trunc);
     if(fichier)  // si l'ouverture a réussi
     {
@@ -112,15 +118,15 @@ void utils::getEigentoData(arma::dmat & src, char* pathAndName){
     }
     else  // sinon
     {
-        std::cerr << "Erreur à l'ouverture !" << std::endl;
+        std::cerr << "Some wrong with getArmaMat2Txt !" << std::endl;
     }
 }
 
-arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::string norm, bool return_ratios) {
-    if ( _len_guards(M) ){
-        return arma::mat(M, 1, arma::fill::ones);
+arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym, std::string norm, bool return_ratios) {
+    if ( helper::len_guards(M) ){
+        return arma::dmat(M, 1, arma::fill::ones);
     }
-    if ( norm == "" ){
+    if ( norm.empty() ){
         if ( Kmax < 0 ){
             norm = "approximate";
         }else{
@@ -129,7 +135,8 @@ arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::strin
     }
     std::vector<std::string> known_norms = {"2", "approximate", "subsample"};
     if ( std::find(known_norms.begin(), known_norms.end(), norm)== known_norms.end() ){
-        throw fmt::format("norm must be one of {}, got {}", fmt::join(known_norms, ", "), norm);
+        throw std::runtime_error(fmt::format("norm must be one of {}, got {}",
+                                             fmt::join(known_norms, ", "), norm));
     }
     bool singleton;
     if ( Kmax < 0 ){
@@ -140,17 +147,17 @@ arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::strin
     }
 
     if ( Kmax <= 0 || Kmax > M ){
-        throw "Kmax must be greater than 0 and less than M.";
+        throw std::runtime_error("Kmax must be greater than 0 and less than M");
     }
     if ( NW >= double(M/2.0) ){
-        throw "NW must be less than M/2.";
+        throw std::runtime_error("NW must be less than M/2");
     }
     if( NW <= 0 ){
-        throw "NW must be positive";
+        throw std::runtime_error("NW must be positive");
     }
     bool needs_trunc;
-    M = _extend(M, sym, needs_trunc);
-    double W = double(NW)/double(M);
+    M = helper::extend(M, sym, needs_trunc);
+    double W = NW/double(M);
 
     arma::dvec nidx = arma::linspace(0, M - 1, M);
     arma::dvec d = arma::square((M - 1.0 - 2.0 * nidx) / 2.0 ) * std::cos( 2.0 * M_PI * W);
@@ -158,7 +165,7 @@ arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::strin
 
     arma::dvec w;
     arma::dmat windows;
-    _eigh_tridiagonal(d, e, w, windows, std::make_pair<uint16_t, uint16_t>(M - Kmax, M - 1));
+    helper::eigh_tridiagonal(d, e, w, windows, std::make_pair<uint16_t, uint16_t>(M - Kmax, M - 1));
     w = arma::reverse(w);
     windows = arma::reverse(windows, 0);
 
@@ -189,7 +196,7 @@ arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::strin
         if ( M % 2 == 0 ){
             double correction;
             if ( norm == "approximate" ){
-                correction = pow(M, 2) / double( pow(M, 2) + double(NW));
+                correction = pow(M, 2) / double( pow(M, 2) + NW);
             }else{
                 arma::dvec rows = windows.row(0).as_col();
                 kfr::univector<kfr::complex<double>> data2fft = kfr::make_univector(rows.memptr(), windows.n_cols);
@@ -212,8 +219,8 @@ arma::dmat utils::dpss(int16_t M, int16_t NW, int16_t Kmax, bool sym, std::strin
     return windows;
 }
 
-arma::dmat utils::dpsschk(const int & N, const YAML::Node & mts_args){
-    arma::dmat tapers = dpss(N, mts_args["tapers"]["nw"].as<int16_t>(), mts_args["tapers"]["kmax"].as<int16_t>());
+arma::dmat utils::multitaper::dpsschk(const int16_t & N, const YAML::Node & mts_args){
+    arma::dmat tapers = dpss(N, mts_args["tapers"]["nw"].as<double>(), mts_args["tapers"]["kmax"].as<int16_t>());
     tapers = tapers * sqrt(mts_args["Fs"].as<double>());
     return tapers.t();
 }
