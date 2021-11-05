@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.4)
 project(generic_pse)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -43,6 +43,15 @@ find_package(Armadillo REQUIRED)
 find_package(LAPACK REQUIRED)
 # Find Lapack Done
 
+# Find HDF5
+find_package(HDF5  REQUIRED)
+# Find HDF5 Done
+
+# Find pybind11
+find_package(pybind11  REQUIRED)
+message(STATUS "Found pybind11 v${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS} ${pybind11_LIBRARIES}")
+# Find pybind11 Done
+
 INCLUDE_DIRECTORIES(
         "${CMAKE_SOURCE_DIR}/include"
         ${GTEST_INCLUDE_DIRS}
@@ -50,7 +59,11 @@ INCLUDE_DIRECTORIES(
         ${FMT_INCLUDE_DIRS}
         ${KFR_INCLUDE_DIRS}
         ${ARMADILLO_INCLUDE_DIRS}
+        ${HDF5_INCLUDE_DIRS}
+        ${pybind11_INCLUDE_DIRS}
 )
-add_executable(generic_pse main.cpp src/utils.cpp include/utils.h)
+add_executable(generic_pse main.cpp src/utils.cpp include/utils.h src/spectrum_estimator.cpp include/spectrum_estimator.h)
 
-target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES} ${FMT_LIBRARIES} kfr kfr_io kfr_dft ${LAPACK_LIBRARIES} ${ARMADILLO_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES} ${FMT_LIBRARIES}
+        kfr kfr_io kfr_dft ${LAPACK_LIBRARIES} ${ARMADILLO_LIBRARIES}
+        ${HDF5_LIBRARIES} python3.6m pybind11::module)

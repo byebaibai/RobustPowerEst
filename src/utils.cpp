@@ -121,7 +121,19 @@ void utils::getArmaMat2Txt(const arma::dmat & src, const std::string & pathAndNa
         std::cerr << "Some wrong with getArmaMat2Txt !" << std::endl;
     }
 }
-
+void utils::getArmaVec2Txt(const arma::dvec & src, const std::string & pathAndName){
+    std::ofstream fichier(pathAndName, std::ios::out | std::ios::trunc);
+    if(fichier)  // si l'ouverture a réussi
+    {
+        // instructions
+        fichier << src << "\n";
+        fichier.close();  // on referme le fichier
+    }
+    else  // sinon
+    {
+        std::cerr << "Some wrong with getArmaMat2Txt !" << std::endl;
+    }
+}
 arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym, std::string norm, bool return_ratios) {
     if ( helper::len_guards(M) ){
         return arma::dmat(M, 1, arma::fill::ones);
@@ -215,12 +227,6 @@ arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym,
     if ( singleton ){
         windows = windows.row(0);
     }
-
     return windows;
 }
 
-arma::dmat utils::multitaper::dpsschk(const int16_t & N, const YAML::Node & mts_args){
-    arma::dmat tapers = dpss(N, mts_args["tapers"]["nw"].as<double>(), mts_args["tapers"]["kmax"].as<int16_t>());
-    tapers = tapers * sqrt(mts_args["Fs"].as<double>());
-    return tapers.t();
-}
