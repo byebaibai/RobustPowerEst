@@ -203,17 +203,18 @@ arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym,
     }
 
     if ( norm != "2" ){
-        windows = windows.each_col() / arma::max(windows, 1);
+        windows /= windows.max();
         if ( M % 2 == 0 ){
             double correction;
             if ( norm == "approximate" ){
                 correction = pow(M, 2) / double( pow(M, 2) + NW);
             }else{
-                arma::dvec rows = windows.row(0).as_col();
-                arma::cx_dvec s = arma::fft(rows);
+                arma::dvec data2fft = windows.row(0).as_col();
+                arma::cx_dvec s = arma::fft(data2fft);
                 s = s.subvec(0, M/2);
-                arma::cx_dvec shift = -(1 - 1.0/double(M)) * arma::conv_to<arma::cx_dvec>::from(arma::linspace(1, M/2 + 1, M/2));
-                s.subvec(1, M/2) =  2 * s.subvec(1, M/2) % arma::exp(-1 * M_PI * shift * 1i);
+                arma::cx_dvec shift = -(1 - 1.0/double(M)) * arma::conv_to<arma::cx_dvec>::from(
+                        arma::linspace(1, M/2 + 1, M/2));
+                s.subvec(1, M/2) %= 2 * arma::exp(-1 * M_PI * shift * 1i);
                 correction = double(M) / arma::sum(arma::real(s));
             }
             windows *= correction;
