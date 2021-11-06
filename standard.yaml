@@ -1,0 +1,7 @@
+---
+class: standard
+tier:
+  - estimator: mean
+    h: ~
+  - estimator: quantile
+    h: 0.5

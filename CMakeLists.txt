@@ -29,12 +29,6 @@ FIND_LIBRARY(FMT_LIBRARIES libfmt.a
         )
 # Find fmt Done
 
-# Find kfr
-SET(KFR_ROOT "${CMAKE_SOURCE_DIR}/3rdparty/kfr")
-SET(KFR_INCLUDE_DIRS "${KFR_ROOT}/include")
-add_subdirectory(3rdparty/kfr kfr-bin)
-# Find kfr Done
-
 # Find Armadillo
 find_package(Armadillo REQUIRED)
 # Find Armadillo Done
@@ -57,7 +51,6 @@ INCLUDE_DIRECTORIES(
         ${GTEST_INCLUDE_DIRS}
         ${YAML_CPP_INCLUDE_DIRS}
         ${FMT_INCLUDE_DIRS}
-        ${KFR_INCLUDE_DIRS}
         ${ARMADILLO_INCLUDE_DIRS}
         ${HDF5_INCLUDE_DIRS}
         ${pybind11_INCLUDE_DIRS}
@@ -65,5 +58,5 @@ INCLUDE_DIRECTORIES(
 add_executable(generic_pse main.cpp src/utils.cpp include/utils.h src/spectrum_estimator.cpp include/spectrum_estimator.h)
 
 target_link_libraries(${PROJECT_NAME} ${YAML_CPP_LIBRARIES} ${FMT_LIBRARIES}
-        kfr kfr_io kfr_dft ${LAPACK_LIBRARIES} ${ARMADILLO_LIBRARIES}
+        ${LAPACK_LIBRARIES} ${ARMADILLO_LIBRARIES}
         ${HDF5_LIBRARIES} python3.6m pybind11::module)

@@ -9,7 +9,6 @@
 #include <cmath>
 #include <vector>
 
-#include "kfr/dft.hpp"
 #include "fmt/core.h"
 #include "fmt/ranges.h"
 
@@ -204,18 +203,18 @@ arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym,
     }
 
     if ( norm != "2" ){
-        windows = windows / arma::max(windows);
+        windows = windows.each_col() / arma::max(windows, 1);
         if ( M % 2 == 0 ){
             double correction;
             if ( norm == "approximate" ){
                 correction = pow(M, 2) / double( pow(M, 2) + NW);
             }else{
                 arma::dvec rows = windows.row(0).as_col();
-                kfr::univector<kfr::complex<double>> data2fft = kfr::make_univector(rows.memptr(), windows.n_cols);
-                kfr::univector<kfr::complex<double>> s = kfr::irealdft( data2fft );
-                kfr::univector<kfr::complex<double>> shift = -(1 - 1.0/double(M)) * kfr::linspace(1, M/2 + 1, M/2);
-                s.slice(1) = s.slice(1) * 2 * kfr::exp(kfr::make_complex(0, 1) * M_PI * shift);
-                correction = double(M) / kfr::sum(s).real();
+                arma::cx_dvec s = arma::fft(rows);
+                s = s.subvec(0, M/2);
+                arma::cx_dvec shift = -(1 - 1.0/double(M)) * arma::conv_to<arma::cx_dvec>::from(arma::linspace(1, M/2 + 1, M/2));
+                s.subvec(1, M/2) =  2 * s.subvec(1, M/2) % arma::exp(-1 * M_PI * shift * 1i);
+                correction = double(M) / arma::sum(arma::real(s));
             }
             windows *= correction;
         }

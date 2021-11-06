@@ -69,7 +69,7 @@ private:
     arma::dmat estimate_(const arma::dcube & data, const std::string & tiermethod);
     arma::dvec estimate_(const arma::dmat & data, const std::string & tiermethod, const double & h = 0.5);
 
-    std::string toString_(EstimatorCalcType calcType){
+    std::string toString_(const EstimatorCalcType & calcType){
         static std::vector<std::string> table = {"spectrum", "error"};
         return table[calcType];
     }
