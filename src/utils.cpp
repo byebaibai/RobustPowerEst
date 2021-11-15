@@ -9,10 +9,6 @@
 #include <cmath>
 #include <vector>
 
-#include "fmt/core.h"
-#include "fmt/ranges.h"
-
-
 extern "C" {
     void dstebz_(char *RANGE, char *ORDER, int *N, double *VL, double *VU,
                  int *IL, int *IU, double *ABSTOL, double *D, double *E, int *M,
@@ -34,21 +30,21 @@ void utils::helper::dstebz(int *N, double *VL, double *VU,
             D, E, M, &NSPLIT, W, IBLOCK, ISPLIT, WORK.get(), IWORK.get(), &INFO);
     if (INFO != 0) {
         if ( INFO < 0 ){
-            fmt::print("{}-th argument had an illegal value\n", -INFO);
+            printf("%d--th argument had an illegal value\n", -INFO);
         } else {
             switch (INFO){
                 case 4:
-                    fmt::print("the Gershgorin interval initially used was too small. No eigenvalues were computed.\n");
+                    printf("the Gershgorin interval initially used was too small. No eigenvalues were computed.\n");
                     break;
                 case 2:
-                    fmt::print("Not all of the eigenvalues IL:IU were found..\n");
+                    printf("Not all of the eigenvalues IL:IU were found..\n");
                     break;
                 case 1:
-                    fmt::print("Bisection failed to converge for some eigenvalues\n");
+                    printf("Bisection failed to converge for some eigenvalues\n");
                     break;
                 case 3:
-                    fmt::print("Not all of the eigenvalues IL:IU were found..\n");
-                    fmt::print("Bisection failed to converge for some eigenvalues\n");
+                    printf("Not all of the eigenvalues IL:IU were found..\n");
+                    printf("Bisection failed to converge for some eigenvalues\n");
                     break;
             }
         }
@@ -62,9 +58,9 @@ void utils::helper::dstein(int *N, double *D, double *E, int *M, double *W, int 
     dstein_(N, D, E, M, W, IBLOCK, ISPLIT, Z, LDZ, WORK.get(), IWORK.get(), IFAIL.get(), &INFO);
     if (INFO != 0) {
         if ( INFO < 0 ){
-            fmt::print("{}-th argument had an illegal value\n", -INFO);
+            printf("%d--th argument had an illegal value\n", -INFO);
         } else {
-            fmt::print("{} eigenvectors failed to converge in MAXITS iterations.\n", INFO);
+            printf("%d eigenvectors failed to converge in MAXITS iterations.\n", -INFO);
         }
     }
 }
@@ -146,8 +142,8 @@ arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym,
     }
     std::vector<std::string> known_norms = {"2", "approximate", "subsample"};
     if ( std::find(known_norms.begin(), known_norms.end(), norm)== known_norms.end() ){
-        throw std::runtime_error(fmt::format("norm must be one of {}, got {}",
-                                             fmt::join(known_norms, ", "), norm));
+        throw std::runtime_error("\'" + norm + "\' is not an available norm type, please select it from \'2\', "
+                                               "\'approximate\' and \'subsample\'");
     }
     bool singleton;
     if ( Kmax < 0 ){
@@ -229,4 +225,3 @@ arma::dmat utils::multitaper::dpss(int16_t M, double NW, int16_t Kmax, bool sym,
     }
     return windows;
 }
-

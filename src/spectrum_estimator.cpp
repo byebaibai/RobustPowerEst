@@ -3,8 +3,6 @@
 //
 
 #include "spectrum_estimator.h"
-#include "fmt/core.h"
-#include "fmt/ranges.h"
 #include <vector>
 
 arma::dvec spectrum_estimator::computeChi2Ppf_(const arma::dvec & svals, const double & ndegs){
@@ -209,7 +207,7 @@ void spectrum_estimator::scaleFactorCompute_(const arma::cx_dcube & data){
     }else if( scalefactor_calculation_ == ScaleFactorCalcType::kAnalytic &&
             ((method_args_["tier"][0]["estimator"].as<std::string>() != "mean") ||
                 (method_args_["tier"][1]["estimator"].as<std::string>() == "mean")) ){
-        fmt::print("Defaulting to monte-carlo scale factor.");
+        printf("Defaulting to monte-carlo scale factor.\n");
         scalefactor_calculation_ = ScaleFactorCalcType::kMonteCarlo;
     }
     if ( scalefactor_calculation_ == ScaleFactorCalcType::kAnalytic ){
