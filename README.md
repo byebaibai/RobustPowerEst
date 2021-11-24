@@ -14,7 +14,7 @@ The source code in original paper was written in MATLAB, this repo use C++ to im
 * gcc 7.5.0
 * armadillo 10.7.3: `matrix operation`
 * LAPACK: `math function`
-* HDF5: `load eeg data form a hdf5 file`
+* HDF5: `load eeg data from a hdf5 file`
 * pybind11: `use scipy in getting chi2.ppf and beta function`
 * yaml-cpp: `read .yaml configuration file`
 
